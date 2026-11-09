@@ -89,10 +89,8 @@ export default function AdminPanel() {
     try {
       const enteredHash = await computeSHA256(passwordInput.trim());
 
-      // Fetch hash from .env (VITE_ADMIN_PASSWORD_HASH)
-      const DEFAULT_HASH = '37add843a379aa62d5ab101f2ef880c893788e704bc10729e9e620328739baac';
-      const envHash = (import.meta.env.VITE_ADMIN_PASSWORD_HASH || '').trim().toLowerCase();
-      const targetHash = envHash || DEFAULT_HASH;
+      const envHash = (import.meta.env.VITE_ADMIN_PASSWORD_HASH).trim().toLowerCase();
+      const targetHash = envHash;
 
       if (enteredHash === targetHash) {
         setIsAuthenticated(true);
