@@ -30,6 +30,9 @@ export default function AdminPanel() {
     resetToDefaults,
     exportDataJSON,
     importDataJSON,
+    databaseStatus,
+    databaseError,
+    refreshFromDatabase,
   } = useData();
 
   // Authentication State
@@ -52,6 +55,7 @@ export default function AdminPanel() {
   const [formData, setFormData] = useState({});
   const [importStatus, setImportStatus] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isSavingContent, setIsSavingContent] = useState(false);
 
   // Hash Generator Helper for .env
   const [showHashTool, setShowHashTool] = useState(false);
@@ -215,8 +219,10 @@ export default function AdminPanel() {
   };
 
   // Submit Modal
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setIsSavingContent(true);
+    let saved = true;
 
     const publishDate = formData.isScheduled && formData.publishDate ? new Date(formData.publishDate).toISOString() : null;
     const showAsUpcoming = formData.showAsUpcoming !== false;
@@ -235,10 +241,10 @@ export default function AdminPanel() {
       };
 
       if (modalMode === 'add') {
-        if (!vidId) return alert('Please enter a YouTube video ID');
-        addLongVideo(payload);
+        if (!vidId) { setIsSavingContent(false); return alert('Please enter a YouTube video ID'); }
+        saved = await addLongVideo(payload);
       } else {
-        updateLongVideo(editingItem.id, payload);
+        saved = await updateLongVideo(editingItem.id, payload);
       }
     } else if (modalType === 'short') {
       const shortId = formData.id.trim();
@@ -252,10 +258,10 @@ export default function AdminPanel() {
       };
 
       if (modalMode === 'add') {
-        if (!shortId) return alert('Please enter a YouTube short ID');
-        addShort(payload);
+        if (!shortId) { setIsSavingContent(false); return alert('Please enter a YouTube short ID'); }
+        saved = await addShort(payload);
       } else {
-        updateShort(editingItem.id, payload);
+        saved = await updateShort(editingItem.id, payload);
       }
     } else if (modalType === 'roadmap') {
       const payload = {
@@ -267,9 +273,9 @@ export default function AdminPanel() {
       };
 
       if (modalMode === 'add') {
-        addRoadmapPhase(payload);
+        saved = await addRoadmapPhase(payload);
       } else {
-        updateRoadmapPhase(editingItem.phase, payload);
+        saved = await updateRoadmapPhase(editingItem.phase, payload);
       }
     } else if (modalType === 'snippet') {
       const payload = {
@@ -279,13 +285,14 @@ export default function AdminPanel() {
       };
 
       if (modalMode === 'add') {
-        addCodeSnippet(payload);
+        saved = await addCodeSnippet(payload);
       } else {
-        updateCodeSnippet(editingItem.id, payload);
+        saved = await updateCodeSnippet(editingItem.id, payload);
       }
     }
 
-    closeModal();
+    setIsSavingContent(false);
+    if (saved) closeModal();
   };
 
   // Handle JSON Import
@@ -453,6 +460,14 @@ export default function AdminPanel() {
 
       {/* Main CMS Layout */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full text-left">
+
+        {databaseStatus === 'error' && (
+          <div className="mb-5 p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-sm text-red-200">
+            <p className="font-semibold">Could not save or load content from Supabase.</p>
+            <p className="mt-1 break-words">{databaseError}</p>
+            <button type="button" onClick={refreshFromDatabase} className="mt-3 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-400/30 hover:bg-red-500/25">Retry database sync</button>
+          </div>
+        )}
 
         {/* Navigation Tabs Bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap pb-4 border-b border-slate-800 mb-6">
@@ -1048,6 +1063,16 @@ export default function AdminPanel() {
                 </div>
               </div>
 
+              <div className={`p-4 rounded-xl border text-xs ${databaseStatus === 'connected' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : databaseStatus === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-300' : databaseStatus === 'connecting' ? 'bg-sky-500/10 border-sky-500/30 text-sky-300' : 'bg-slate-900 border-slate-800 text-slate-300'}`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold">{databaseStatus === 'connected' ? 'Connected · data is syncing with Supabase' : databaseStatus === 'error' ? 'Database sync failed' : databaseStatus === 'connecting' ? 'Connecting to Supabase…' : 'Local storage mode · Supabase settings are missing'}</p>
+                    {databaseError && <p className="mt-1 text-red-300 break-words">{databaseError}</p>}
+                  </div>
+                  {databaseStatus !== 'local' && <button type="button" onClick={refreshFromDatabase} className="shrink-0 px-3 py-2 rounded-lg bg-slate-950/70 border border-slate-700 text-slate-200 hover:border-yellow-400 transition">Sync now</button>}
+                </div>
+              </div>
+
               <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 space-y-2">
                 <p className="font-semibold text-yellow-400 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" /> Ready-to-run queries with <code>publish_date</code> support available in: <code className="bg-slate-950 px-2 py-0.5 rounded text-white">init.sql</code>
@@ -1115,7 +1140,7 @@ export default function AdminPanel() {
                   <RotateCcw className="w-6 h-6 text-red-400 mb-3" />
                   <h4 className="text-base font-bold text-white mb-1">Factory Reset</h4>
                   <p className="text-xs text-slate-400 mb-4">
-                    Clear all custom additions or deletions from localStorage and restore original YouTube channel defaults.
+                    Clear custom additions and restore the bundled YouTube channel defaults in the active data store.
                   </p>
                 </div>
                 <button
@@ -1494,9 +1519,10 @@ export default function AdminPanel() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSavingContent}
                   className="px-5 py-2 rounded-xl text-slate-950 font-bold bg-yellow-400 hover:bg-yellow-300 shadow-glow-yellow transition text-xs"
                 >
-                  {formData.isScheduled ? 'Schedule for Future' : 'Save Changes'}
+                  {isSavingContent ? 'Saving…' : formData.isScheduled ? 'Schedule for Future' : 'Save Changes'}
                 </button>
               </div>
 
