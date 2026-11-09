@@ -11,6 +11,8 @@ export const channelInfo = {
   channelUrl: "https://www.youtube.com/@mallupy05",
   subscribeUrl: "https://www.youtube.com/@mallupy05?sub_confirmation=1",
   buyMeACoffeeUrl: "https://buymeacoffee.com/mallupy",
+  githubRepoUrl: "https://github.com/mallupy/Zero-2-Hero",
+  githubRepoName: "mallupy/Zero-2-Hero",
   profileImg: "/profile.jpg",
   stats: {
     videosCount: "16+",
