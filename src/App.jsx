@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider } from './context/DataContext';
 import PublicPortfolio from './pages/PublicPortfolio';
 import AdminPanel from './pages/AdminPanel';
@@ -7,7 +7,7 @@ import AdminPanel from './pages/AdminPanel';
 export default function App() {
   return (
     <DataProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           {/* Public Portfolio Website */}
           <Route path="/" element={<PublicPortfolio />} />
@@ -18,7 +18,7 @@ export default function App() {
           {/* Catch-all redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </DataProvider>
   );
 }
